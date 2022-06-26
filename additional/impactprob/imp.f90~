@@ -1,0 +1,98 @@
+program imp
+!uses orbfit .fou and nine .dmi output files and calculates Impact probability
+implicit none 
+
+integer::nclones,eof,n,n2,i,j,nVIh,nVIs
+real*8::dumr(1:8),dumr2(11),pi,epoch,rad2grad,rearthau,sigstart,sigend
+real*8::dsig,au
+character(len=50)::dum,ini,infile1,infile2,outfile1,outfile2
+character(len=150)::out
+
+infile1="2011AG5.fou"
+infile2="Radau.dmi"
+!get sigma LOV values for clones
+ini=" no  RMS ,lastcor,  magn,  MOID ,nod+,nod-, sigQ"
+outfile1="imph.out"
+outfile2="imps.out"
+out="n    sigma calc   sigma fou   dmin [Rearth]   tmin [JD]"
+
+nclones=9000
+epoch=2455569.76682699d0
+
+sigstart=-0.504
+sigend=0.504
+
+dsig=(-sigstart+sigend)/real(nclones)
+
+pi=4.d0*atan(1.d0)
+rad2grad=180.d0/pi
+au=149597870.7d0
+rearthau=6371.d0/au 
+
+open(21,file=trim(infile1),status="old")
+open(22,file=trim(infile2),status="old")
+open(23,file=trim(outfile1),status='replace')
+open(24,file=trim(outfile2),status='replace')
+write(23,*)out
+write(24,*)out
+
+eof=0
+!number of virtual impactors due to hyperbolic min dist
+nVIh=0
+!number of virtual impactors due to spline min dist
+nVIs=0
+
+!read header
+do while (dum.ne.trim(ini))
+ read(21,'(A)',iostat=eof)dum
+ if(eof.ne.0) then
+  write(*,*)'no initialization statement detected to initiate extraction'
+  STOP
+ end if
+end do
+
+read(22,*)dum
+
+!start comparing files
+do while(n<nclones)
+read(21,*,iostat=eof)n,dumr(:)
+
+ if(eof.ne.0) then
+  write(*,*)'error in reading clone elements, possibly number of clones incorrect'
+  STOP
+ end if
+ 
+read(22,*,iostat=eof)n2,dumr2(:) 
+ if(eof.ne.0) then
+  write(*,*)'error in reading clone elements, possibly number of clones incorrect'
+  STOP
+ end if
+ 
+ if(n2-3.ne.n) then 
+ write(*,*)'possible mismatch between input files asteroid ids'
+ end if
+ !spline
+ if(abs(dumr2(4)).lt.rearthau) then
+  write(23,*)n,sigstart+real(n)*dsig,dumr(8),dumr2(4)/rearthau, dumr2(5)
+  nVIs=nVIs+1
+ end if
+ 
+ if(abs(dumr2(7)).lt.rearthau.and.abs(dumr2(4)).lt.20.) then
+  write(24,*)n,sigstart+real(n)*dsig,dumr(8),dumr2(7)/rearthau, dumr2(8)
+  nVIh=nVIh+1
+ end if
+ 
+ 
+end do
+
+write(*,*)'nVIs/nclones',real(nVIs)/real(nclones),'1/',int(nclones/nVIs)
+write(*,*)'nVIh/nclones',real(nVIh)/real(nclones),'1/',int(nclones/nVIh)
+
+close(21)
+close(22)
+close(23)
+close(24)
+end program 
+ 
+
+
